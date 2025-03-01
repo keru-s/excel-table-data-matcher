@@ -6,6 +6,9 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 import pandas as pd
 import os
+import xlrd
+import chardet
+import datetime
 
 class ExcelCompareTool(QMainWindow):
     def __init__(self):
@@ -184,7 +187,7 @@ class ExcelCompareTool(QMainWindow):
             self,
             f"选择Excel文件{file_num}",
             "",
-            "Excel files (*.xlsx)"
+            "Excel files (*.xlsx *.xls)"
         )
         
         if file_path:
@@ -207,22 +210,85 @@ class ExcelCompareTool(QMainWindow):
     
     def show_preview(self, file_path, preview_table, sheet_name=None):
         try:
-            # 使用openpyxl读取Excel文件
-            # 如果是新选择的文件，更新sheet列表
-            if not sheet_name:
-                # 使用openpyxl读取
-                excel_file = pd.ExcelFile(file_path, engine='openpyxl')
-                sheet_names = excel_file.sheet_names
-                
-                # 更新对应的sheet下拉列表
-                sheet_combo = self.sheet1_combo if preview_table == self.preview1 else self.sheet2_combo
-                sheet_combo.clear()
-                sheet_combo.addItems(sheet_names)
-                sheet_combo.setEnabled(True)
-                sheet_name = sheet_names[0]  # 默认选择第一个sheet
+            # 检查文件类型
+            file_ext = os.path.splitext(file_path)[1].lower()
             
-            # 读取指定sheet的前5行
-            df = pd.read_excel(file_path, engine='openpyxl', sheet_name=sheet_name, nrows=5)
+            if file_ext == '.xls':
+                # 使用xlrd处理xls文件
+                # 尝试使用常见的中文编码
+                encodings = ['gb18030', 'gbk', 'gb2312', 'utf-8']
+                workbook = None
+                
+                for encoding in encodings:
+                    try:
+                        workbook = xlrd.open_workbook(file_path, encoding_override=encoding)
+                        # 尝试读取一个单元格的内容来验证编码是否正确
+                        sheet = workbook.sheet_by_index(0)
+                        test_value = str(sheet.cell_value(0, 0))
+                        if not any(c == '?' or c == '�' or ord(c) > 0xffff for c in test_value):
+                            break
+                    except Exception:
+                        continue
+                
+                if not workbook:
+                    # 如果所有编码都失败，使用默认编码
+                    workbook = xlrd.open_workbook(file_path)
+                
+                # 如果是新选择的文件，更新sheet列表
+                if not sheet_name:
+                    sheet_names = workbook.sheet_names()
+                    
+                    # 更新对应的sheet下拉列表
+                    sheet_combo = self.sheet1_combo if preview_table == self.preview1 else self.sheet2_combo
+                    sheet_combo.clear()
+                    sheet_combo.addItems(sheet_names)
+                    sheet_combo.setEnabled(True)
+                    sheet_name = sheet_names[0]  # 默认选择第一个sheet
+                
+                # 读取指定sheet的前5行
+                sheet = workbook.sheet_by_name(sheet_name)
+                
+                # 创建DataFrame
+                data = []
+                headers = []
+                
+                # 获取表头
+                for col in range(sheet.ncols):
+                    headers.append(str(sheet.cell_value(0, col)))
+                
+                # 获取数据（前5行）
+                for row in range(1, min(6, sheet.nrows)):
+                    row_data = []
+                    for col in range(sheet.ncols):
+                        cell_value = sheet.cell_value(row, col)
+                        # 处理日期类型
+                        if sheet.cell_type(row, col) == xlrd.XL_CELL_DATE:
+                            try:
+                                cell_value = xlrd.xldate.xldate_as_datetime(cell_value, workbook.datemode).strftime('%Y-%m-%d')
+                            except:
+                                pass
+                        row_data.append(cell_value)
+                    data.append(row_data)
+                
+                # 创建DataFrame
+                df = pd.DataFrame(data, columns=headers)
+            else:
+                # 使用openpyxl读取Excel文件
+                # 如果是新选择的文件，更新sheet列表
+                if not sheet_name:
+                    # 使用openpyxl读取
+                    excel_file = pd.ExcelFile(file_path, engine='openpyxl')
+                    sheet_names = excel_file.sheet_names
+                    
+                    # 更新对应的sheet下拉列表
+                    sheet_combo = self.sheet1_combo if preview_table == self.preview1 else self.sheet2_combo
+                    sheet_combo.clear()
+                    sheet_combo.addItems(sheet_names)
+                    sheet_combo.setEnabled(True)
+                    sheet_name = sheet_names[0]  # 默认选择第一个sheet
+                
+                # 读取指定sheet的前5行
+                df = pd.read_excel(file_path, engine='openpyxl', sheet_name=sheet_name, nrows=5)
             
             # 设置表格的行数和列数
             preview_table.setRowCount(len(df.index))
@@ -435,8 +501,109 @@ class ExportWorker(QThread):
     def run(self):
         try:
             # 读取Excel文件
-            df1 = pd.read_excel(self.file1_path, engine='openpyxl', sheet_name=self.sheet1_name)
-            df2 = pd.read_excel(self.file2_path, engine='openpyxl', sheet_name=self.sheet2_name)
+            # 根据文件扩展名选择合适的引擎
+            file1_ext = os.path.splitext(self.file1_path)[1].lower()
+            file2_ext = os.path.splitext(self.file2_path)[1].lower()
+            
+            # 读取第一个文件
+            if file1_ext == '.xls':
+                # 使用xlrd处理xls文件
+                # 尝试使用常见的中文编码
+                encodings = ['gb18030', 'gbk', 'gb2312', 'utf-8']
+                workbook1 = None
+                
+                for encoding in encodings:
+                    try:
+                        workbook1 = xlrd.open_workbook(self.file1_path, encoding_override=encoding)
+                        # 尝试读取一个单元格的内容来验证编码是否正确
+                        sheet1 = workbook1.sheet_by_index(0)
+                        test_value = str(sheet1.cell_value(0, 0))
+                        if not any(c == '?' or c == '�' or ord(c) > 0xffff for c in test_value):
+                            break
+                    except Exception:
+                        continue
+                
+                if not workbook1:
+                    # 如果所有编码都失败，使用默认编码
+                    workbook1 = xlrd.open_workbook(self.file1_path)
+                
+                sheet1 = workbook1.sheet_by_name(self.sheet1_name)
+                
+                # 创建DataFrame
+                data1 = []
+                headers1 = []
+                
+                # 获取表头
+                for col in range(sheet1.ncols):
+                    headers1.append(str(sheet1.cell_value(0, col)))
+                
+                # 获取数据
+                for row in range(1, sheet1.nrows):
+                    row_data = []
+                    for col in range(sheet1.ncols):
+                        cell_value = sheet1.cell_value(row, col)
+                        # 处理日期类型
+                        if sheet1.cell_type(row, col) == xlrd.XL_CELL_DATE:
+                            try:
+                                cell_value = xlrd.xldate.xldate_as_datetime(cell_value, workbook1.datemode).strftime('%Y-%m-%d')
+                            except:
+                                pass
+                        row_data.append(cell_value)
+                    data1.append(row_data)
+                
+                df1 = pd.DataFrame(data1, columns=headers1)
+            else:
+                df1 = pd.read_excel(self.file1_path, engine='openpyxl', sheet_name=self.sheet1_name)
+            
+            # 读取第二个文件
+            if file2_ext == '.xls':
+                # 使用xlrd处理xls文件
+                # 尝试使用常见的中文编码
+                encodings = ['gb18030', 'gbk', 'gb2312', 'utf-8']
+                workbook2 = None
+                
+                for encoding in encodings:
+                    try:
+                        workbook2 = xlrd.open_workbook(self.file2_path, encoding_override=encoding)
+                        # 尝试读取一个单元格的内容来验证编码是否正确
+                        sheet2 = workbook2.sheet_by_index(0)
+                        test_value = str(sheet2.cell_value(0, 0))
+                        if not any(c == '?' or c == '�' or ord(c) > 0xffff for c in test_value):
+                            break
+                    except Exception:
+                        continue
+                
+                if not workbook2:
+                    # 如果所有编码都失败，使用默认编码
+                    workbook2 = xlrd.open_workbook(self.file2_path)
+                
+                sheet2 = workbook2.sheet_by_name(self.sheet2_name)
+                
+                # 创建DataFrame
+                data2 = []
+                headers2 = []
+                
+                # 获取表头
+                for col in range(sheet2.ncols):
+                    headers2.append(str(sheet2.cell_value(0, col)))
+                
+                # 获取数据
+                for row in range(1, sheet2.nrows):
+                    row_data = []
+                    for col in range(sheet2.ncols):
+                        cell_value = sheet2.cell_value(row, col)
+                        # 处理日期类型
+                        if sheet2.cell_type(row, col) == xlrd.XL_CELL_DATE:
+                            try:
+                                cell_value = xlrd.xldate.xldate_as_datetime(cell_value, workbook2.datemode).strftime('%Y-%m-%d')
+                            except:
+                                pass
+                        row_data.append(cell_value)
+                    data2.append(row_data)
+                
+                df2 = pd.DataFrame(data2, columns=headers2)
+            else:
+                df2 = pd.read_excel(self.file2_path, engine='openpyxl', sheet_name=self.sheet2_name)
             
             # 创建匹配条件
             merge_conditions = []
@@ -464,7 +631,15 @@ class ExportWorker(QThread):
             
             # 获取输出文件路径
             output_dir = os.path.dirname(self.file2_path)
-            output_path = os.path.join(output_dir, f"{self.output_filename}.xlsx")
+            base_output_path = os.path.join(output_dir, f"{self.output_filename}.xlsx")
+            
+            # 检查是否存在同名文件，如果存在则添加时间后缀
+            if os.path.exists(base_output_path):
+                # 获取当前时间作为后缀
+                current_time = datetime.datetime.now().strftime("%m-%d_%H:%M")
+                output_path = os.path.join(output_dir, f"{self.output_filename}_{current_time}.xlsx")
+            else:
+                output_path = base_output_path
             
             # 导出结果
             result.to_excel(output_path, index=False)
