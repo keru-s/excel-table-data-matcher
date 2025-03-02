@@ -359,21 +359,39 @@ class ExcelCompareTool(QMainWindow):
     
     def add_match_row(self):
         # 创建一行匹配选择
-        row_layout = QHBoxLayout()
+        row_widget = QWidget()
+        row_layout = QHBoxLayout(row_widget)
         combo1 = QComboBox()
         combo2 = QComboBox()
         
-        # 如果已经有文件1的数据，添加到下拉列表
+        # 获取已选择的列
+        selected_columns1 = []
+        selected_columns2 = []
+        for row in self.match_rows:
+            text1 = row[0].currentText()
+            text2 = row[1].currentText()
+            if text1:
+                selected_columns1.append(text1)
+            if text2:
+                selected_columns2.append(text2)
+        
+        # 如果已经有文件1的数据，添加未被选择的列到下拉列表
         if self.preview1.columnCount() > 0:
             headers = [self.preview1.horizontalHeaderItem(i).text() 
                       for i in range(self.preview1.columnCount())]
-            combo1.addItems(headers)
+            available_headers = [h for h in headers if h not in selected_columns1]
+            combo1.addItems(available_headers)
         
-        # 如果已经有文件2的数据，添加到下拉列表
+        # 如果已经有文件2的数据，添加未被选择的列到下拉列表
         if self.preview2.columnCount() > 0:
             headers = [self.preview2.horizontalHeaderItem(i).text() 
                       for i in range(self.preview2.columnCount())]
-            combo2.addItems(headers)
+            available_headers = [h for h in headers if h not in selected_columns2]
+            combo2.addItems(available_headers)
+        
+        # 添加选择变化事件处理
+        combo1.currentIndexChanged.connect(lambda index: self.on_match_column_changed())
+        combo2.currentIndexChanged.connect(lambda index: self.on_match_column_changed())
         
         row_layout.addWidget(combo1)
         row_layout.addWidget(combo2)
@@ -382,7 +400,66 @@ class ExcelCompareTool(QMainWindow):
         self.match_rows.append([combo1, combo2])
         
         # 将行布局添加到匹配行容器中
-        self.match_rows_layout.addLayout(row_layout)
+        self.match_rows_layout.addWidget(row_widget)
+        
+        # 更新所有下拉列表的可选项
+        self.update_available_columns()
+
+    def on_match_column_changed(self):
+        # 更新所有下拉列表的可选项
+        self.update_available_columns()
+    
+    def update_available_columns(self):
+        # 获取所有可用列
+        all_columns1 = []
+        all_columns2 = []
+        
+        if self.preview1.columnCount() > 0:
+            all_columns1 = [self.preview1.horizontalHeaderItem(i).text() 
+                           for i in range(self.preview1.columnCount())]
+        if self.preview2.columnCount() > 0:
+            all_columns2 = [self.preview2.horizontalHeaderItem(i).text() 
+                           for i in range(self.preview2.columnCount())]
+        
+        # 获取所有已选择的列
+        selected_columns1 = []
+        selected_columns2 = []
+        
+        # 先收集所有已选择的列
+        for combo1, combo2 in self.match_rows:
+            text1 = combo1.currentText()
+            text2 = combo2.currentText()
+            if text1:
+                selected_columns1.append(text1)
+            if text2:
+                selected_columns2.append(text2)
+        
+        # 更新每个下拉列表
+        for combo1, combo2 in self.match_rows:
+            current1 = combo1.currentText()
+            current2 = combo2.currentText()
+            
+            # 暂时断开信号连接
+            combo1.blockSignals(True)
+            combo2.blockSignals(True)
+            
+            # 更新文件1的下拉列表
+            combo1.clear()
+            available_columns1 = [col for col in all_columns1 if col not in selected_columns1 or col == current1]
+            combo1.addItems(available_columns1)
+            if current1 in available_columns1:
+                combo1.setCurrentText(current1)
+            
+            # 更新文件2的下拉列表
+            combo2.clear()
+            available_columns2 = [col for col in all_columns2 if col not in selected_columns2 or col == current2]
+            combo2.addItems(available_columns2)
+            if current2 in available_columns2:
+                combo2.setCurrentText(current2)
+            
+            # 恢复信号连接
+            combo1.blockSignals(False)
+            combo2.blockSignals(False)
     
     def delete_match_row(self):
         if self.match_rows:
@@ -398,7 +475,10 @@ class ExcelCompareTool(QMainWindow):
             # 删除布局
             self.match_rows_layout.removeItem(layout)
             layout.deleteLater()
-    
+            
+            # 更新所有下拉列表的可选项
+            self.update_available_columns()
+
     def on_export_finished(self, output_path, loading):
         loading.close()
         QMessageBox.information(self, "导出成功", f"数据已成功匹配并导出到：\n{output_path}")
