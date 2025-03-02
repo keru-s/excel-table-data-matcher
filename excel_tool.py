@@ -324,6 +324,13 @@ class ExcelCompareTool(QMainWindow):
             preview_table.setItem(0, 0, QTableWidgetItem(str(e)))
 
     def update_file1_columns(self, columns):
+        # 获取已选择的匹配列
+        selected_columns1 = []
+        for row in self.match_rows:
+            text1 = row[0].currentText()
+            if text1:
+                selected_columns1.append(text1)
+        
         # 更新文件1的下拉列表选项
         for row in self.match_rows:
             row[0].clear()
@@ -335,12 +342,21 @@ class ExcelCompareTool(QMainWindow):
             checkbox.deleteLater()
         self.file1_checkboxes.clear()
         
+        # 只添加未被选为匹配列的列到输出多选框
         for column in columns:
-            checkbox = QCheckBox(column)
-            self.file1_checkboxes.append(checkbox)
-            self.file1_checkbox_layout.addWidget(checkbox)
-    
+            if column not in selected_columns1:
+                checkbox = QCheckBox(column)
+                self.file1_checkboxes.append(checkbox)
+                self.file1_checkbox_layout.addWidget(checkbox)
+
     def update_file2_columns(self, columns):
+        # 获取已选择的匹配列
+        selected_columns2 = []
+        for row in self.match_rows:
+            text2 = row[1].currentText()
+            if text2:
+                selected_columns2.append(text2)
+        
         # 更新文件2的下拉列表选项
         for row in self.match_rows:
             row[1].clear()
@@ -352,10 +368,12 @@ class ExcelCompareTool(QMainWindow):
             checkbox.deleteLater()
         self.file2_checkboxes.clear()
         
+        # 只添加未被选为匹配列的列到输出多选框
         for column in columns:
-            checkbox = QCheckBox(column)
-            self.file2_checkboxes.append(checkbox)
-            self.file2_checkbox_layout.addWidget(checkbox)
+            if column not in selected_columns2:
+                checkbox = QCheckBox(column)
+                self.file2_checkboxes.append(checkbox)
+                self.file2_checkbox_layout.addWidget(checkbox)
     
     def add_match_row(self):
         # 创建一行匹配选择
@@ -381,6 +399,8 @@ class ExcelCompareTool(QMainWindow):
                       for i in range(self.preview1.columnCount())]
             available_headers = [h for h in headers if h not in selected_columns1]
             combo1.addItems(available_headers)
+            if available_headers:  # 如果有可用的列，设置第一个为默认值
+                combo1.setCurrentText(available_headers[0])
         
         # 如果已经有文件2的数据，添加未被选择的列到下拉列表
         if self.preview2.columnCount() > 0:
@@ -388,6 +408,8 @@ class ExcelCompareTool(QMainWindow):
                       for i in range(self.preview2.columnCount())]
             available_headers = [h for h in headers if h not in selected_columns2]
             combo2.addItems(available_headers)
+            if available_headers:  # 如果有可用的列，设置第一个为默认值
+                combo2.setCurrentText(available_headers[0])
         
         # 添加选择变化事件处理
         combo1.currentIndexChanged.connect(lambda index: self.on_match_column_changed())
@@ -404,11 +426,59 @@ class ExcelCompareTool(QMainWindow):
         
         # 更新所有下拉列表的可选项
         self.update_available_columns()
+        
+        # 手动触发更新输出列多选框
+        self.on_match_column_changed()
 
     def on_match_column_changed(self):
         # 更新所有下拉列表的可选项
         self.update_available_columns()
-    
+        
+        # 获取当前所有已选择的匹配列
+        selected_columns1 = []
+        selected_columns2 = []
+        for row in self.match_rows:
+            text1 = row[0].currentText()
+            text2 = row[1].currentText()
+            if text1:
+                selected_columns1.append(text1)
+            if text2:
+                selected_columns2.append(text2)
+        
+        # 更新文件1的输出列多选框
+        for checkbox in self.file1_checkboxes:
+            self.file1_checkbox_layout.removeWidget(checkbox)
+            checkbox.deleteLater()
+        self.file1_checkboxes.clear()
+        
+        # 获取文件1的所有列
+        if self.preview1.columnCount() > 0:
+            columns1 = [self.preview1.horizontalHeaderItem(i).text() 
+                       for i in range(self.preview1.columnCount())]
+            # 只添加未被选为匹配列的列到输出多选框
+            for column in columns1:
+                if column not in selected_columns1:
+                    checkbox = QCheckBox(column)
+                    self.file1_checkboxes.append(checkbox)
+                    self.file1_checkbox_layout.addWidget(checkbox)
+        
+        # 更新文件2的输出列多选框
+        for checkbox in self.file2_checkboxes:
+            self.file2_checkbox_layout.removeWidget(checkbox)
+            checkbox.deleteLater()
+        self.file2_checkboxes.clear()
+        
+        # 获取文件2的所有列
+        if self.preview2.columnCount() > 0:
+            columns2 = [self.preview2.horizontalHeaderItem(i).text() 
+                       for i in range(self.preview2.columnCount())]
+            # 只添加未被选为匹配列的列到输出多选框
+            for column in columns2:
+                if column not in selected_columns2:
+                    checkbox = QCheckBox(column)
+                    self.file2_checkboxes.append(checkbox)
+                    self.file2_checkbox_layout.addWidget(checkbox)
+
     def update_available_columns(self):
         # 获取所有可用列
         all_columns1 = []
