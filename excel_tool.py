@@ -2,7 +2,8 @@ import sys
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QLabel, QLineEdit, QPushButton,
                              QGroupBox, QTableWidget, QTableWidgetItem, QFileDialog,
-                             QComboBox, QCheckBox, QProgressDialog, QMessageBox)
+                             QComboBox, QCheckBox, QProgressDialog, QMessageBox,
+                             QScrollArea)
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 import pandas as pd
 import os
@@ -120,13 +121,29 @@ class ExcelCompareTool(QMainWindow):
         
         # 文件1的多选框组
         file1_checkbox_group = QGroupBox("匹配源文件输出列")
-        self.file1_checkbox_layout = QVBoxLayout()
-        file1_checkbox_group.setLayout(self.file1_checkbox_layout)
+        file1_checkbox_container = QWidget()
+        self.file1_checkbox_layout = QVBoxLayout(file1_checkbox_container)
+        file1_scroll = QScrollArea()
+        file1_scroll.setWidget(file1_checkbox_container)
+        file1_scroll.setWidgetResizable(True)
+        file1_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        file1_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        file1_scroll.setMaximumHeight(450)
+        file1_group_layout = QVBoxLayout(file1_checkbox_group)
+        file1_group_layout.addWidget(file1_scroll)
         
         # 文件2的多选框组
         file2_checkbox_group = QGroupBox("被匹配文件输出列")
-        self.file2_checkbox_layout = QVBoxLayout()
-        file2_checkbox_group.setLayout(self.file2_checkbox_layout)
+        file2_checkbox_container = QWidget()
+        self.file2_checkbox_layout = QVBoxLayout(file2_checkbox_container)
+        file2_scroll = QScrollArea()
+        file2_scroll.setWidget(file2_checkbox_container)
+        file2_scroll.setWidgetResizable(True)
+        file2_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        file2_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        file2_scroll.setMaximumHeight(450)
+        file2_group_layout = QVBoxLayout(file2_checkbox_group)
+        file2_group_layout.addWidget(file2_scroll)
         
         checkboxes_layout.addWidget(file1_checkbox_group)
         checkboxes_layout.addWidget(file2_checkbox_group)
