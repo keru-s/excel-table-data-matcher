@@ -28,7 +28,8 @@ class ExcelCompareTool(QMainWindow):
     def _init_ui(self):
         """初始化用户界面"""
         self.setWindowTitle("Excel文件处理工具")
-        self.setGeometry(100, 100, 900, 340)
+        self.setGeometry(100, 100, 1000, 600)
+        self.setStyleSheet("QMainWindow { background-color: #f5f5f5; }")
         
         # 创建主布局
         self._setup_main_layout()
@@ -41,14 +42,16 @@ class ExcelCompareTool(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         self.main_layout = QVBoxLayout(central_widget)
-        self.main_layout.setSpacing(5)
-        self.main_layout.setContentsMargins(5, 5, 5, 5)
+        self.main_layout.setSpacing(15)
+        self.main_layout.setContentsMargins(15, 15, 15, 15)
     
     def _add_file_selection_section(self):
         """添加文件选择区域"""
         # 初始化文件路径输入框
         self.file1_path = QLineEdit()
         self.file2_path = QLineEdit()
+        self.file1_path.setStyleSheet("QLineEdit { padding: 5px; border: 1px solid #ccc; border-radius: 4px; }")
+        self.file2_path.setStyleSheet("QLineEdit { padding: 5px; border: 1px solid #ccc; border-radius: 4px; }")
         
         # 创建文件选择组件
         file1_group = self._create_file_group("匹配源文件", self.file1_path, 1)
@@ -56,8 +59,8 @@ class ExcelCompareTool(QMainWindow):
         
         # 添加到主布局
         file_selection_layout = QHBoxLayout()
-        file_selection_layout.setSpacing(10)
-        file_selection_layout.setContentsMargins(0, 0, 0, 0)
+        file_selection_layout.setSpacing(15)
+        file_selection_layout.setContentsMargins(0, 0, 0, 10)
         file_selection_layout.addWidget(file1_group)
         file_selection_layout.addWidget(file2_group)
         self.main_layout.addLayout(file_selection_layout)
@@ -119,17 +122,31 @@ class ExcelCompareTool(QMainWindow):
     def _create_preview_table(self):
         """创建预览表格"""
         table = QTableWidget()
-        table.setFixedHeight(200)
-        table.setFixedWidth(450)
+        table.setFixedHeight(250)
+        table.setFixedWidth(480)
         table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         table.setContentsMargins(0, 0, 0, 0)
+        table.setStyleSheet("""
+            QTableWidget {
+                background-color: white;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+            }
+            QHeaderView::section {
+                background-color: #f0f0f0;
+                padding: 5px;
+                border: none;
+            }
+        """)
         return table
         
     def _setup_preview_labels(self):
         """设置预览标签样式"""
-        self.preview1_label.setContentsMargins(0, 0, 0, 2)
-        self.preview2_label.setContentsMargins(0, 0, 0, 2)
+        self.preview1_label.setContentsMargins(0, 0, 0, 5)
+        self.preview2_label.setContentsMargins(0, 0, 0, 5)
+        self.preview1_label.setStyleSheet("QLabel { font-weight: bold; color: #333; }")
+        self.preview2_label.setStyleSheet("QLabel { font-weight: bold; color: #333; }")
         
     def _create_preview_layout(self, label, table):
         """创建单个预览布局"""
@@ -142,9 +159,22 @@ class ExcelCompareTool(QMainWindow):
     def _add_column_matching_section(self):
         """添加列匹配设置区域"""
         match_group = QGroupBox("列匹配设置")
+        match_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                margin-top: 5px;
+                padding-top: 15px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 3px;
+            }
+        """)
         match_layout = QVBoxLayout()
         match_layout.setSpacing(5)
-        match_layout.setContentsMargins(5, 5, 5, 5)
+        match_layout.setContentsMargins(10, 15, 10, 10)
         
         # 添加按钮
         self._add_matching_buttons(match_layout)
@@ -170,11 +200,38 @@ class ExcelCompareTool(QMainWindow):
     def _add_matching_buttons(self, parent_layout):
         """添加匹配操作的按钮"""
         button_layout = QHBoxLayout()
+        button_layout.setSpacing(10)
         
         add_button = QPushButton("增加")
+        add_button.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                font-weight: bold;
+                padding: 5px 10px;
+                border: none;
+                border-radius: 4px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+        """)
         add_button.clicked.connect(self._handle_add_match_row)
         
         delete_button = QPushButton("删除")
+        delete_button.setStyleSheet("""
+            QPushButton {
+                background-color: #f44336;
+                color: white;
+                font-weight: bold;
+                padding: 5px 10px;
+                border: none;
+                border-radius: 4px;
+            }
+            QPushButton:hover {
+                background-color: #d32f2f;
+            }
+        """)
         delete_button.clicked.connect(self._handle_delete_match_row)
         
         button_layout.addWidget(add_button)
@@ -194,9 +251,10 @@ class ExcelCompareTool(QMainWindow):
     def _add_output_settings_section(self):
         """添加输出结果设置区域"""
         output_group = QGroupBox("输出结果设置")
+        output_group.setStyleSheet("QGroupBox { border: 1px solid #ddd; border-radius: 4px; margin-top: 10px; }")
         output_layout = QVBoxLayout()
-        output_layout.setSpacing(5)
-        output_layout.setContentsMargins(5, 5, 5, 5)
+        output_layout.setSpacing(10)
+        output_layout.setContentsMargins(10, 15, 10, 10)
         
         # 添加多选框区域
         self._add_output_checkboxes(output_layout)
@@ -222,9 +280,11 @@ class ExcelCompareTool(QMainWindow):
         
         # 文件1的多选框组
         self.file1_checkbox_group = self._create_checkbox_group("匹配源文件输出列")
+        self.file1_checkbox_group.setStyleSheet("QGroupBox { border: none; }")
         
         # 文件2的多选框组
         self.file2_checkbox_group = self._create_checkbox_group("被匹配文件输出列")
+        self.file2_checkbox_group.setStyleSheet("QGroupBox { border: none; }")
         
         checkboxes_layout.addWidget(self.file1_checkbox_group)
         checkboxes_layout.addWidget(self.file2_checkbox_group)
@@ -237,17 +297,24 @@ class ExcelCompareTool(QMainWindow):
         
         if title == "匹配源文件输出列":
             self.file1_checkbox_layout = QVBoxLayout(container)
+            self.file1_checkbox_layout.setSpacing(10)
+            self.file1_checkbox_layout.setContentsMargins(10, 10, 10, 10)
         else:
             self.file2_checkbox_layout = QVBoxLayout(container)
+            self.file2_checkbox_layout.setSpacing(10)
+            self.file2_checkbox_layout.setContentsMargins(10, 10, 10, 10)
         
         scroll = QScrollArea()
         scroll.setWidget(container)
         scroll.setWidgetResizable(True)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setMaximumHeight(450)
+        scroll.setMinimumHeight(150)
+        scroll.setMaximumHeight(300)
         
         group_layout = QVBoxLayout(group)
+        group_layout.setSpacing(10)
+        group_layout.setContentsMargins(5, 5, 5, 5)
         group_layout.addWidget(scroll)
         
         return group
@@ -266,15 +333,16 @@ class ExcelCompareTool(QMainWindow):
         export_button = QPushButton("导出结果")
         export_button.setStyleSheet("""
             QPushButton {
-                background-color: #4CAF50;
+                background-color: #2196F3;
                 color: white;
                 font-weight: bold;
-                padding: 5px 10px;
+                padding: 8px 16px;
                 border: none;
                 border-radius: 4px;
+                min-width: 100px;
             }
             QPushButton:hover {
-                background-color: #45a049;
+                background-color: #0b7dda;
             }
         """)
         export_button.clicked.connect(self._handle_export_result)
