@@ -201,11 +201,17 @@ class ExcelCompareTool(QMainWindow):
         # 添加多选框区域
         self._add_output_checkboxes(output_layout)
         
+        # 创建文件名和按钮的布局
+        filename_button_layout = QHBoxLayout()
+        
         # 添加输出文件名设置
-        self._add_output_filename_setting(output_layout)
+        self._add_output_filename_setting(filename_button_layout)
         
         # 添加导出按钮
-        self._add_export_button(output_layout)
+        self._add_export_button(filename_button_layout)
+        
+        # 添加布局到主输出布局
+        output_layout.addLayout(filename_button_layout)
         
         output_group.setLayout(output_layout)
         self.main_layout.addWidget(output_group)
@@ -258,6 +264,19 @@ class ExcelCompareTool(QMainWindow):
     def _add_export_button(self, parent_layout):
         """添加导出按钮"""
         export_button = QPushButton("导出结果")
+        export_button.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                font-weight: bold;
+                padding: 5px 10px;
+                border: none;
+                border-radius: 4px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+        """)
         export_button.clicked.connect(self._handle_export_result)
         parent_layout.addWidget(export_button)
     def _handle_export_result(self):
