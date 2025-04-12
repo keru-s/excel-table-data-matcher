@@ -784,14 +784,27 @@ class ExportWorker(QThread):
                 rename_dict[col2_name] = col1_name
                 merge_on.append(col1_name)
             
+            # 为df2的非匹配列添加后缀以避免同名冲突
+            df2_columns = df2.columns.tolist()
+            for col in df2_columns:
+                if col not in rename_dict and col not in [v for v in rename_dict.values()]:
+                    rename_dict[col] = f"{col}_被匹配文件"
+            
             # 重命名df2的列以匹配df1
             df2 = df2.rename(columns=rename_dict)
             
             # 合并数据
             result = pd.merge(df1, df2, on=merge_on)
             
-            # 合并匹配列和输出列
-            final_columns = merge_on + [col for col in self.output_columns if col not in merge_on]
+            # 准备最终输出的列
+            final_columns = merge_on.copy()
+            
+            # 添加选中的输出列
+            for col in self.output_columns:
+                if col in df1.columns and col not in merge_on:
+                    final_columns.append(col)
+                elif f"{col}_被匹配文件" in result.columns:
+                    final_columns.append(f"{col}_被匹配文件")
             
             # 选择最终输出的列
             result = result[final_columns]
