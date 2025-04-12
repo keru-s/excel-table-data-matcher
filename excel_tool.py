@@ -155,15 +155,27 @@ class ExcelCompareTool(QMainWindow):
         match_group.setLayout(match_layout)
         self.main_layout.addWidget(match_group)
     
+    def _handle_add_match_row(self):
+        """
+        处理增加匹配行按钮点击事件
+        """
+        self.add_match_row()
+        
+    def _handle_delete_match_row(self):
+        """
+        处理删除匹配行按钮点击事件
+        """
+        self.delete_match_row()
+        
     def _add_matching_buttons(self, parent_layout):
         """添加匹配操作的按钮"""
         button_layout = QHBoxLayout()
         
         add_button = QPushButton("增加")
-        add_button.clicked.connect(self.add_match_row)
+        add_button.clicked.connect(self._handle_add_match_row)
         
         delete_button = QPushButton("删除")
-        delete_button.clicked.connect(self.delete_match_row)
+        delete_button.clicked.connect(self._handle_delete_match_row)
         
         button_layout.addWidget(add_button)
         button_layout.addWidget(delete_button)
@@ -246,20 +258,34 @@ class ExcelCompareTool(QMainWindow):
     def _add_export_button(self, parent_layout):
         """添加导出按钮"""
         export_button = QPushButton("导出结果")
-        export_button.clicked.connect(self.export_result)
+        export_button.clicked.connect(self._handle_export_result)
         parent_layout.addWidget(export_button)
-        
-        # 初始化匹配行和复选框列表
-        self.match_rows = []
-        self.file1_checkboxes = []
-        self.file2_checkboxes = []
-        
-        # 添加默认的匹配行
-        self.add_match_row()
+    def _handle_export_result(self):
+        """
+        处理导出结果按钮点击事件
+        """
+        self.export_result()
     
+    def _handle_file_selection(self, file_path, file_num):
+        """
+        处理文件选择后的通用逻辑
+        
+        参数:
+            file_path: 选择的文件路径
+            file_num: 文件编号(1或2)
+        """
+        if file_num == 1:
+            self.file1_path.setText(file_path)
+            self.preview1_label.setText(f"匹配源文件: {file_path.split('/')[-1]}")
+            self.show_preview(file_path, self.preview1)
+        else:
+            self.file2_path.setText(file_path)
+            self.preview2_label.setText(f"被匹配文件: {file_path.split('/')[-1]}")
+            self.show_preview(file_path, self.preview2)
+            
     def _select_file(self, file_num):
         """
-        处理文件选择操作
+        打开文件选择对话框并处理选择结果
         
         参数:
             file_num: 文件编号(1或2)
@@ -272,15 +298,20 @@ class ExcelCompareTool(QMainWindow):
         )
         
         if file_path:
-            if file_num == 1:
-                self.file1_path.setText(file_path)
-                self.preview1_label.setText(f"匹配源文件: {file_path.split('/')[-1]}")
-                self.show_preview(file_path, self.preview1)
-            else:
-                self.file2_path.setText(file_path)
-                self.preview2_label.setText(f"被匹配文件: {file_path.split('/')[-1]}")
-                self.show_preview(file_path, self.preview2)
+            self._handle_file_selection(file_path, file_num)
     
+    def _handle_sheet_change(self, file_path, sheet_name, preview_table):
+        """
+        处理sheet变更后的通用逻辑
+        
+        参数:
+            file_path: 文件路径
+            sheet_name: 选择的sheet名称
+            preview_table: 要更新的预览表格
+        """
+        if file_path and sheet_name:
+            self.show_preview(file_path, preview_table, sheet_name)
+            
     def _on_sheet_changed(self, file_num):
         """
         处理sheet选择变化事件
@@ -292,8 +323,7 @@ class ExcelCompareTool(QMainWindow):
         sheet_combo = self.sheet1_combo if file_num == 1 else self.sheet2_combo
         preview_table = self.preview1 if file_num == 1 else self.preview2
         
-        if file_path and sheet_combo.currentText():
-            self.show_preview(file_path, preview_table, sheet_combo.currentText())
+        self._handle_sheet_change(file_path, sheet_combo.currentText(), preview_table)
     
     def _create_file_group(self, title, line_edit, file_num):
         """
@@ -341,6 +371,12 @@ class ExcelCompareTool(QMainWindow):
         return combo
     
     def select_file(self, file_num):
+        """
+        公开的文件选择方法
+        
+        参数:
+            file_num: 文件编号(1或2)
+        """
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             f"选择Excel文件{file_num}",
@@ -349,22 +385,20 @@ class ExcelCompareTool(QMainWindow):
         )
         
         if file_path:
-            if file_num == 1:
-                self.file1_path.setText(file_path)
-                self.preview1_label.setText(f"匹配源文件: {file_path.split('/')[-1]}")
-                self.show_preview(file_path, self.preview1)
-            else:
-                self.file2_path.setText(file_path)
-                self.preview2_label.setText(f"被匹配文件: {file_path.split('/')[-1]}")
-                self.show_preview(file_path, self.preview2)
+            self._handle_file_selection(file_path, file_num)
     
     def on_sheet_changed(self, file_num):
+        """
+        公开的sheet变更处理方法
+        
+        参数:
+            file_num: 文件编号(1或2)
+        """
         file_path = self.file1_path.text() if file_num == 1 else self.file2_path.text()
         sheet_combo = self.sheet1_combo if file_num == 1 else self.sheet2_combo
         preview_table = self.preview1 if file_num == 1 else self.preview2
         
-        if file_path and sheet_combo.currentText():
-            self.show_preview(file_path, preview_table, sheet_combo.currentText())
+        self._handle_sheet_change(file_path, sheet_combo.currentText(), preview_table)
     
     def show_preview(self, file_path, preview_table, sheet_name=None):
         try:
@@ -489,6 +523,15 @@ class ExcelCompareTool(QMainWindow):
             if text1:
                 selected_columns1.append(text1)
         
+        # 如果没有匹配行，自动添加一个默认匹配行
+        if not self.match_rows and columns:
+            self.add_match_row()
+            selected_columns1 = []
+            
+            # 自动设置第一列为默认匹配列
+            if columns:
+                self.match_rows[0][0].setCurrentText(columns[0])
+        
         # 更新文件1的下拉列表选项
         for row in self.match_rows:
             row[0].clear()
@@ -514,6 +557,15 @@ class ExcelCompareTool(QMainWindow):
             text2 = row[1].currentText()
             if text2:
                 selected_columns2.append(text2)
+        
+        # 如果没有匹配行，自动添加一个默认匹配行
+        if not self.match_rows and columns:
+            self.add_match_row()
+            selected_columns2 = []
+            
+            # 自动设置第一列为默认匹配列
+            if columns:
+                self.match_rows[0][1].setCurrentText(columns[0])
         
         # 更新文件2的下拉列表选项
         for row in self.match_rows:
