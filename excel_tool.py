@@ -57,13 +57,30 @@ class ExcelCompareTool(QMainWindow):
         file1_group = self._create_file_group("匹配源文件", self.file1_path, 1)
         file2_group = self._create_file_group("被匹配文件", self.file2_path, 2)
         
+        # 创建文件选择组
+        file_selection_group = QGroupBox("文件选择")
+        file_selection_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                margin-top: 5px;
+                padding-top: 15px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 3px;
+            }
+        """)
+        
         # 添加到主布局
         file_selection_layout = QHBoxLayout()
         file_selection_layout.setSpacing(15)
-        file_selection_layout.setContentsMargins(0, 0, 0, 10)
+        file_selection_layout.setContentsMargins(10, 15, 10, 10)
         file_selection_layout.addWidget(file1_group)
         file_selection_layout.addWidget(file2_group)
-        self.main_layout.addLayout(file_selection_layout)
+        file_selection_group.setLayout(file_selection_layout)
+        self.main_layout.addWidget(file_selection_group)
         
         # 添加预览区域
         self._add_preview_section()
@@ -97,9 +114,22 @@ class ExcelCompareTool(QMainWindow):
     def _add_preview_section(self):
         """添加数据预览区域"""
         preview_group = QGroupBox("数据预览")
+        preview_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                margin-top: 5px;
+                padding-top: 15px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 3px;
+            }
+        """)
         preview_layout = QHBoxLayout()
         preview_layout.setSpacing(2)
-        preview_layout.setContentsMargins(2, 2, 2, 2)
+        preview_layout.setContentsMargins(10, 15, 10, 10)
         
         # 创建预览表格
         self.preview1_label = QLabel("未选择文件")
@@ -251,7 +281,19 @@ class ExcelCompareTool(QMainWindow):
     def _add_output_settings_section(self):
         """添加输出结果设置区域"""
         output_group = QGroupBox("输出结果设置")
-        output_group.setStyleSheet("QGroupBox { border: 1px solid #ddd; border-radius: 4px; margin-top: 10px; }")
+        output_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                margin-top: 5px;
+                padding-top: 15px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 3px;
+            }
+        """)
         output_layout = QVBoxLayout()
         output_layout.setSpacing(10)
         output_layout.setContentsMargins(10, 15, 10, 10)
