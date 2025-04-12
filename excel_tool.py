@@ -786,13 +786,16 @@ class ExportWorker(QThread):
             # 检查是否存在同名文件，如果存在则添加时间后缀
             if os.path.exists(base_output_path):
                 # 获取当前时间作为后缀
-                current_time = datetime.datetime.now().strftime("%m-%d_%H:%M")
+                current_time = datetime.datetime.now().strftime("%m%d_%H%M%S")  # 修改时间格式
                 output_path = os.path.join(output_dir, f"{self.output_filename}_{current_time}.xlsx")
             else:
                 output_path = base_output_path
             
+            # 确保路径使用正确的分隔符
+            output_path = os.path.normpath(output_path)
+            
             # 导出结果
-            result.to_excel(output_path, index=False)
+            result.to_excel(output_path, index=False, engine='openpyxl')  # 明确指定引擎
             
             self.finished.emit(output_path)
             
