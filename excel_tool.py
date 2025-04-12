@@ -12,158 +12,242 @@ import chardet
 import datetime
 
 class ExcelCompareTool(QMainWindow):
+    """
+    Excel文件比较工具主窗口类
+    
+    功能:
+    - 提供两个Excel文件的比较界面
+    - 支持列匹配和结果导出
+    """
+    
     def __init__(self):
         super().__init__()
+        self._init_data_structures()
+        self._init_ui()
+    
+    def _init_ui(self):
+        """初始化用户界面"""
         self.setWindowTitle("Excel文件处理工具")
         self.setGeometry(100, 100, 900, 340)
         
-        # 创建中心部件和主布局
+        # 创建主布局
+        self._setup_main_layout()
+        
+        # 添加文件选择区域
+        self._add_file_selection_section()
+        
+    def _setup_main_layout(self):
+        """设置主布局"""
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
-        main_layout = QVBoxLayout(central_widget)
-        main_layout.setSpacing(5)  # 减小主布局间距
-        main_layout.setContentsMargins(5, 5, 5, 5)  # 设置主布局边距
-        
-        # 文件选择区域
+        self.main_layout = QVBoxLayout(central_widget)
+        self.main_layout.setSpacing(5)
+        self.main_layout.setContentsMargins(5, 5, 5, 5)
+    
+    def _add_file_selection_section(self):
+        """添加文件选择区域"""
+        # 初始化文件路径输入框
         self.file1_path = QLineEdit()
         self.file2_path = QLineEdit()
         
-        # 创建水平布局来容纳文件选择组件
-        file_selection_layout = QHBoxLayout()
-        file_selection_layout.setSpacing(10)  # 减小文件选择框之间的间距
-        file_selection_layout.setContentsMargins(0, 0, 0, 0)  # 移除文件选择布局的边距
-        
         # 创建文件选择组件
-        file1_group = self.create_file_group("匹配源文件", self.file1_path, 1)
-        file2_group = self.create_file_group("被匹配文件", self.file2_path, 2)
+        file1_group = self._create_file_group("匹配源文件", self.file1_path, 1)
+        file2_group = self._create_file_group("被匹配文件", self.file2_path, 2)
         
+        # 添加到主布局
+        file_selection_layout = QHBoxLayout()
+        file_selection_layout.setSpacing(10)
+        file_selection_layout.setContentsMargins(0, 0, 0, 0)
         file_selection_layout.addWidget(file1_group)
         file_selection_layout.addWidget(file2_group)
-        main_layout.addLayout(file_selection_layout)
+        self.main_layout.addLayout(file_selection_layout)
         
-        # 预览区域
+        # 添加预览区域
+        self._add_preview_section()
+        
+        # 添加列匹配设置区域
+        self._add_column_matching_section()
+        
+        # 添加输出结果设置区域
+        self._add_output_settings_section()
+        
+    def _init_data_structures(self):
+        """初始化数据结构和默认值"""
+        self.match_rows = []
+        self.file1_checkboxes = []
+        self.file2_checkboxes = []
+        self.file1_path = None
+        self.file2_path = None
+        self.sheet1_combo = None
+        self.sheet2_combo = None
+        self.preview1 = None
+        self.preview2 = None
+        self.main_layout = None
+        self.match_rows_widget = None
+        self.match_rows_layout = None
+        self.file1_checkbox_group = None
+        self.file2_checkbox_group = None
+        self.file1_checkbox_layout = None
+        self.file2_checkbox_layout = None
+        self.output_filename = None
+        
+    def _add_preview_section(self):
+        """添加数据预览区域"""
         preview_group = QGroupBox("数据预览")
         preview_layout = QHBoxLayout()
-        preview_layout.setSpacing(2)  # 进一步减小水平布局的间距
-        preview_layout.setContentsMargins(2, 2, 2, 2)  # 设置更小的边距
+        preview_layout.setSpacing(2)
+        preview_layout.setContentsMargins(2, 2, 2, 2)
         
-        # 创建两个垂直布局来容纳标签和表格
-        preview1_layout = QVBoxLayout()
-        preview1_layout.setSpacing(0)  # 移除垂直布局的间距
-        preview2_layout = QVBoxLayout()
-        preview2_layout.setSpacing(0)  # 移除垂直布局的间距
-        
-        # 创建文件名标签并设置样式
+        # 创建预览表格
         self.preview1_label = QLabel("未选择文件")
         self.preview2_label = QLabel("未选择文件")
-        self.preview1_label.setContentsMargins(0, 0, 0, 2)  # 设置标签底部小边距
-        self.preview2_label.setContentsMargins(0, 0, 0, 2)  # 设置标签底部小边距
+        self.preview1 = self._create_preview_table()
+        self.preview2 = self._create_preview_table()
         
-        # 创建表格预览组件
-        self.preview1 = QTableWidget()
-        self.preview2 = QTableWidget()
+        # 设置标签样式
+        self._setup_preview_labels()
         
-        # 设置表格的固定大小和滚动条策略
-        for preview in [self.preview1, self.preview2]:
-            preview.setFixedHeight(200)  # 减小固定高度
-            preview.setFixedWidth(450)   # 设置固定宽度
-            preview.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-            preview.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-            preview.setContentsMargins(0, 0, 0, 0)  # 移除表格的内边距
-        # 将标签和表格添加到各自的垂直布局中
-        preview1_layout.addWidget(self.preview1_label)
-        preview1_layout.addWidget(self.preview1)
-        preview2_layout.addWidget(self.preview2_label)
-        preview2_layout.addWidget(self.preview2)
+        # 创建并添加预览布局
+        preview1_layout = self._create_preview_layout(self.preview1_label, self.preview1)
+        preview2_layout = self._create_preview_layout(self.preview2_label, self.preview2)
         
-        # 将垂直布局添加到预览布局中
         preview_layout.addLayout(preview1_layout)
         preview_layout.addLayout(preview2_layout)
-        
         preview_group.setLayout(preview_layout)
-        main_layout.addWidget(preview_group)
+        self.main_layout.addWidget(preview_group)
         
-        # 列匹配设置区域
+    def _create_preview_table(self):
+        """创建预览表格"""
+        table = QTableWidget()
+        table.setFixedHeight(200)
+        table.setFixedWidth(450)
+        table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        table.setContentsMargins(0, 0, 0, 0)
+        return table
+        
+    def _setup_preview_labels(self):
+        """设置预览标签样式"""
+        self.preview1_label.setContentsMargins(0, 0, 0, 2)
+        self.preview2_label.setContentsMargins(0, 0, 0, 2)
+        
+    def _create_preview_layout(self, label, table):
+        """创建单个预览布局"""
+        layout = QVBoxLayout()
+        layout.setSpacing(0)
+        layout.addWidget(label)
+        layout.addWidget(table)
+        return layout
+        
+    def _add_column_matching_section(self):
+        """添加列匹配设置区域"""
         match_group = QGroupBox("列匹配设置")
         match_layout = QVBoxLayout()
         match_layout.setSpacing(5)
         match_layout.setContentsMargins(5, 5, 5, 5)
         
-        # 按钮布局
+        # 添加按钮
+        self._add_matching_buttons(match_layout)
+        
+        # 添加匹配行容器
+        self._add_match_rows_container(match_layout)
+        
+        match_group.setLayout(match_layout)
+        self.main_layout.addWidget(match_group)
+    
+    def _add_matching_buttons(self, parent_layout):
+        """添加匹配操作的按钮"""
         button_layout = QHBoxLayout()
+        
         add_button = QPushButton("增加")
         add_button.clicked.connect(self.add_match_row)
+        
         delete_button = QPushButton("删除")
         delete_button.clicked.connect(self.delete_match_row)
+        
         button_layout.addWidget(add_button)
         button_layout.addWidget(delete_button)
         button_layout.addStretch()
-        match_layout.addLayout(button_layout)
         
-        # 匹配行容器
+        parent_layout.addLayout(button_layout)
+    
+    def _add_match_rows_container(self, parent_layout):
+        """添加匹配行容器"""
         self.match_rows_widget = QWidget()
         self.match_rows_layout = QVBoxLayout(self.match_rows_widget)
         self.match_rows_layout.setSpacing(5)
         self.match_rows_layout.setContentsMargins(0, 0, 0, 0)
-        match_layout.addWidget(self.match_rows_widget)
+        parent_layout.addWidget(self.match_rows_widget)
         
-        match_group.setLayout(match_layout)
-        main_layout.addWidget(match_group)
-        
-        # 输出结果设置区域
+    def _add_output_settings_section(self):
+        """添加输出结果设置区域"""
         output_group = QGroupBox("输出结果设置")
         output_layout = QVBoxLayout()
         output_layout.setSpacing(5)
         output_layout.setContentsMargins(5, 5, 5, 5)
         
-        # 多选框区域
+        # 添加多选框区域
+        self._add_output_checkboxes(output_layout)
+        
+        # 添加输出文件名设置
+        self._add_output_filename_setting(output_layout)
+        
+        # 添加导出按钮
+        self._add_export_button(output_layout)
+        
+        output_group.setLayout(output_layout)
+        self.main_layout.addWidget(output_group)
+    
+    def _add_output_checkboxes(self, parent_layout):
+        """添加输出列多选框"""
         checkboxes_layout = QHBoxLayout()
         
         # 文件1的多选框组
-        file1_checkbox_group = QGroupBox("匹配源文件输出列")
-        file1_checkbox_container = QWidget()
-        self.file1_checkbox_layout = QVBoxLayout(file1_checkbox_container)
-        file1_scroll = QScrollArea()
-        file1_scroll.setWidget(file1_checkbox_container)
-        file1_scroll.setWidgetResizable(True)
-        file1_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        file1_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        file1_scroll.setMaximumHeight(450)
-        file1_group_layout = QVBoxLayout(file1_checkbox_group)
-        file1_group_layout.addWidget(file1_scroll)
+        self.file1_checkbox_group = self._create_checkbox_group("匹配源文件输出列")
         
         # 文件2的多选框组
-        file2_checkbox_group = QGroupBox("被匹配文件输出列")
-        file2_checkbox_container = QWidget()
-        self.file2_checkbox_layout = QVBoxLayout(file2_checkbox_container)
-        file2_scroll = QScrollArea()
-        file2_scroll.setWidget(file2_checkbox_container)
-        file2_scroll.setWidgetResizable(True)
-        file2_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        file2_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        file2_scroll.setMaximumHeight(450)
-        file2_group_layout = QVBoxLayout(file2_checkbox_group)
-        file2_group_layout.addWidget(file2_scroll)
+        self.file2_checkbox_group = self._create_checkbox_group("被匹配文件输出列")
         
-        checkboxes_layout.addWidget(file1_checkbox_group)
-        checkboxes_layout.addWidget(file2_checkbox_group)
-        output_layout.addLayout(checkboxes_layout)
+        checkboxes_layout.addWidget(self.file1_checkbox_group)
+        checkboxes_layout.addWidget(self.file2_checkbox_group)
+        parent_layout.addLayout(checkboxes_layout)
+    
+    def _create_checkbox_group(self, title):
+        """创建多选框组"""
+        group = QGroupBox(title)
+        container = QWidget()
         
-        # 输出文件名设置
+        if title == "匹配源文件输出列":
+            self.file1_checkbox_layout = QVBoxLayout(container)
+        else:
+            self.file2_checkbox_layout = QVBoxLayout(container)
+        
+        scroll = QScrollArea()
+        scroll.setWidget(container)
+        scroll.setWidgetResizable(True)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setMaximumHeight(450)
+        
+        group_layout = QVBoxLayout(group)
+        group_layout.addWidget(scroll)
+        
+        return group
+    
+    def _add_output_filename_setting(self, parent_layout):
+        """添加输出文件名设置"""
         filename_layout = QHBoxLayout()
         filename_layout.addWidget(QLabel("输出文件名:"))
         self.output_filename = QLineEdit("匹配结果")
         filename_layout.addWidget(self.output_filename)
         filename_layout.addWidget(QLabel(".xlsx"))
-        output_layout.addLayout(filename_layout)
-        
-        # 添加导出按钮
+        parent_layout.addLayout(filename_layout)
+    
+    def _add_export_button(self, parent_layout):
+        """添加导出按钮"""
         export_button = QPushButton("导出结果")
         export_button.clicked.connect(self.export_result)
-        output_layout.addWidget(export_button)
-        
-        output_group.setLayout(output_layout)
-        main_layout.addWidget(output_group)
+        parent_layout.addWidget(export_button)
         
         # 初始化匹配行和复选框列表
         self.match_rows = []
@@ -173,31 +257,88 @@ class ExcelCompareTool(QMainWindow):
         # 添加默认的匹配行
         self.add_match_row()
     
-    def create_file_group(self, title, line_edit, file_num):
+    def _select_file(self, file_num):
+        """
+        处理文件选择操作
+        
+        参数:
+            file_num: 文件编号(1或2)
+        """
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            f"选择Excel文件{file_num}",
+            "",
+            "Excel files (*.xlsx *.xls)"
+        )
+        
+        if file_path:
+            if file_num == 1:
+                self.file1_path.setText(file_path)
+                self.preview1_label.setText(f"匹配源文件: {file_path.split('/')[-1]}")
+                self.show_preview(file_path, self.preview1)
+            else:
+                self.file2_path.setText(file_path)
+                self.preview2_label.setText(f"被匹配文件: {file_path.split('/')[-1]}")
+                self.show_preview(file_path, self.preview2)
+    
+    def _on_sheet_changed(self, file_num):
+        """
+        处理sheet选择变化事件
+        
+        参数:
+            file_num: 文件编号(1或2)
+        """
+        file_path = self.file1_path.text() if file_num == 1 else self.file2_path.text()
+        sheet_combo = self.sheet1_combo if file_num == 1 else self.sheet2_combo
+        preview_table = self.preview1 if file_num == 1 else self.preview2
+        
+        if file_path and sheet_combo.currentText():
+            self.show_preview(file_path, preview_table, sheet_combo.currentText())
+    
+    def _create_file_group(self, title, line_edit, file_num):
+        """
+        创建文件选择组
+        
+        参数:
+            title: 组标题
+            line_edit: 文件路径输入框
+            file_num: 文件编号(1或2)
+        
+        返回:
+            QGroupBox: 包含文件选择控件的组
+        """
         group = QGroupBox(title)
         layout = QHBoxLayout()
         
+        # 设置文件路径输入框
         line_edit.setReadOnly(True)
         layout.addWidget(line_edit)
         
+        # 添加文件选择按钮
         select_button = QPushButton("选择文件")
-        select_button.clicked.connect(lambda: self.select_file(file_num))
+        select_button.clicked.connect(lambda: self._select_file(file_num))
         layout.addWidget(select_button)
         
-        # 添加sheet选择下拉列表
-        sheet_combo = QComboBox()
-        sheet_combo.setEnabled(False)  # 初始禁用
-        sheet_combo.currentIndexChanged.connect(lambda: self.on_sheet_changed(file_num))
+        # 添加sheet选择下拉框
+        sheet_combo = self._create_sheet_combo(file_num)
         layout.addWidget(sheet_combo)
-        
-        # 保存sheet选择下拉列表的引用
-        if file_num == 1:
-            self.sheet1_combo = sheet_combo
-        else:
-            self.sheet2_combo = sheet_combo
         
         group.setLayout(layout)
         return group
+    
+    def _create_sheet_combo(self, file_num):
+        """创建sheet选择下拉框"""
+        combo = QComboBox()
+        combo.setEnabled(False)
+        combo.currentIndexChanged.connect(lambda: self._on_sheet_changed(file_num))
+        
+        # 保存引用
+        if file_num == 1:
+            self.sheet1_combo = combo
+        else:
+            self.sheet2_combo = combo
+            
+        return combo
     
     def select_file(self, file_num):
         file_path, _ = QFileDialog.getOpenFileName(
