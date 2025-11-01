@@ -1,5 +1,19 @@
+# 核心依赖
 chardet==5.2.0
 pandas==2.2.3
 PyQt6==6.9.0
-PyQt6_sip==13.5.2
+PyQt6_sip>=13.5.2
 xlrd==2.0.1
+psutil>=5.9.0
+openpyxl>=3.1.0
+numpy>=1.24.0
+
+# 打包工具依赖
+pyinstaller>=5.13.0
+auto-py-to-exe>=2.40.0
+
+# 额外的运行时依赖（确保打包完整性）
+python-dateutil>=2.8.0
+pytz>=2023.3
+et-xmlfile>=1.1.0
+six>=1.16.0
