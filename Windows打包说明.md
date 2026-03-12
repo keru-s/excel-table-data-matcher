@@ -45,7 +45,7 @@ auto-py-to-exe
 
 **基本设置：**
 - Script Location: 选择 `start_excel_tool.py`
-- Onefile: 选择 "One File"
+- Onefile: 建议选择 "One Directory"
 - Console Window: 选择 "Window Based (hide the console)"
 
 **高级设置：**
@@ -63,8 +63,7 @@ auto-py-to-exe
   xlrd.xldate
   openpyxl.cell
   psutil._psutil_windows
-  multiprocessing.pool
-  concurrent.futures
+  chardet
   ```
 
 #### 4. 开始打包
@@ -85,7 +84,7 @@ python build_config.py
 #### 3. 执行打包
 ```bash
 # 使用生成的命令（从 build_config.py 输出复制）
-pyinstaller --onefile --windowed --clean --noconfirm --name "Excel数据匹配工具" --hidden-import PyQt6.QtCore --hidden-import PyQt6.QtWidgets --hidden-import PyQt6.QtGui --hidden-import pandas._libs.tslibs.timedeltas --hidden-import pandas._libs.tslibs.np_datetime --hidden-import pandas._libs.tslibs.nattype --hidden-import pandas._libs.properties --hidden-import numpy.core._methods --hidden-import numpy.lib.format --hidden-import xlrd.xldate --hidden-import openpyxl.cell --hidden-import openpyxl.workbook --hidden-import psutil._psutil_windows --hidden-import multiprocessing.pool --hidden-import concurrent.futures --exclude-module matplotlib --exclude-module tkinter --exclude-module test --exclude-module unittest --exclude-module pydoc --exclude-module doctest start_excel_tool.py
+pyinstaller --windowed --clean --noconfirm --name "Excel数据匹配工具" --hidden-import PyQt6.QtCore --hidden-import PyQt6.QtWidgets --hidden-import PyQt6.QtGui --hidden-import pandas._libs.tslibs.timedeltas --hidden-import pandas._libs.tslibs.np_datetime --hidden-import pandas._libs.tslibs.nattype --hidden-import pandas._libs.properties --hidden-import numpy.core._methods --hidden-import numpy.lib.format --hidden-import xlrd.xldate --hidden-import openpyxl.cell --hidden-import openpyxl.workbook --hidden-import psutil._psutil_windows --hidden-import chardet --exclude-module matplotlib --exclude-module tkinter --exclude-module test --exclude-module unittest --exclude-module pydoc --exclude-module doctest start_excel_tool.py
 
 # 或使用 spec 文件
 pyinstaller "Excel数据匹配工具.spec"
@@ -117,10 +116,10 @@ pyinstaller "Excel数据匹配工具.spec"
 - 确保所有 PyQt6 子模块都在 Hidden Imports 中
 - 添加 `--collect-submodules PyQt6`
 
-### 5. 多进程功能异常
+### 5. 大文件处理表现不稳定
 **解决方案：**
-- 确保包含了 `multiprocessing` 和 `concurrent.futures` 模块
-- 在 Windows 上测试多进程功能
+- 优先使用 `One Directory` 打包方式，减少启动解包开销
+- 确保包含 `chardet`，避免 CSV 编码检测在打包后失效
 
 ## 🧪 测试建议
 
@@ -161,7 +160,7 @@ pyi-archive_viewer Excel数据匹配工具.exe
 - 工具版本：v2.0 (性能优化版)
 - 支持的文件格式：Excel (.xlsx, .xls), CSV
 - 主要功能：数据匹配、列对比、结果导出
-- 性能特性：多进程处理、内存优化、大文件支持
+- 性能特性：异步预览、流式导出、低内存占用、大文件支持
 
 ---
 

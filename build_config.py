@@ -19,7 +19,7 @@ PYINSTALLER_CONFIG = {
 
     # 输出配置
     'name': 'Excel数据匹配工具',
-    'onefile': True,  # 打包成单个exe文件
+    'onefile': False,  # 桌面程序推荐 onedir，启动更快、问题更少
     'windowed': True,  # 不显示控制台窗口
 
     # 图标文件（如果有的话）
@@ -50,8 +50,7 @@ PYINSTALLER_CONFIG = {
         'openpyxl.cell',
         'openpyxl.workbook',
         'psutil._psutil_windows',
-        'multiprocessing.pool',
-        'concurrent.futures',
+        'chardet',
     ],
 
     # 排除的模块（减小文件大小）

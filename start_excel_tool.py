@@ -8,6 +8,7 @@ Excel数据匹配工具启动脚本
 
 import sys
 import os
+import multiprocessing as mp
 
 def check_dependencies():
     """检查必要的依赖"""
@@ -66,6 +67,7 @@ def main():
 
 if __name__ == "__main__":
     try:
+        mp.freeze_support()
         main()
     except KeyboardInterrupt:
         print("\n程序被用户中断")
