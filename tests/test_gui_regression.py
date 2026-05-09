@@ -14,6 +14,8 @@ class GuiRegressionTest(unittest.TestCase):
     def test_gui_smoke_flow(self) -> None:
         env = os.environ.copy()
         env["QT_QPA_PLATFORM"] = "offscreen"
+        env["PYTHONUTF8"] = "1"
+        env["PYTHONIOENCODING"] = "utf-8"
 
         result = subprocess.run(
             [sys.executable, str(ROOT / "gui_smoke_test.py")],
