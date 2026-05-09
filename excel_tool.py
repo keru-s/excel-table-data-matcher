@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
     QScrollArea,
     QSizePolicy,
     QSplitter,
+    QStackedWidget,
     QStatusBar,
     QTableView,
     QVBoxLayout,
@@ -206,6 +207,7 @@ class ExcelCompareTool(QMainWindow):
         self.preview_request_ids = {1: 0, 2: 0}
         self.export_worker: ExportWorker | None = None
         self.progress_dialog: QProgressDialog | None = None
+        self.current_step = 0
         self.match_rows: list[MatchRowWidget] = []
         self.output_checkboxes = {LEFT_SOURCE: [], RIGHT_SOURCE: []}
         self.current_theme = "light"
@@ -241,31 +243,93 @@ class ExcelCompareTool(QMainWindow):
         file_splitter.setStretchFactor(0, 1)
         file_splitter.setStretchFactor(1, 1)
 
+        step_header = self._create_step_header()
         match_card = self._create_match_card()
         export_card = self._create_export_card()
 
-        config_splitter = QSplitter(Qt.Orientation.Vertical)
-        config_splitter.setChildrenCollapsible(False)
-        config_splitter.setHandleWidth(8)
-        config_splitter.addWidget(match_card)
-        config_splitter.addWidget(export_card)
-        config_splitter.setSizes([190, 430])
-        config_splitter.setStretchFactor(0, 0)
-        config_splitter.setStretchFactor(1, 1)
+        match_page = QWidget()
+        match_page_layout = QVBoxLayout(match_page)
+        match_page_layout.setContentsMargins(0, 0, 0, 0)
+        match_page_layout.setSpacing(12)
 
-        page_splitter = QSplitter(Qt.Orientation.Vertical)
-        page_splitter.setChildrenCollapsible(False)
-        page_splitter.setHandleWidth(8)
-        page_splitter.addWidget(file_splitter)
-        page_splitter.addWidget(config_splitter)
-        page_splitter.setSizes([280, 540])
-        page_splitter.setStretchFactor(0, 1)
-        page_splitter.setStretchFactor(1, 1)
-        main_layout.addWidget(page_splitter, 1)
+        match_splitter = QSplitter(Qt.Orientation.Vertical)
+        match_splitter.setChildrenCollapsible(False)
+        match_splitter.setHandleWidth(8)
+        match_splitter.addWidget(file_splitter)
+        match_splitter.addWidget(match_card)
+        match_splitter.setSizes([380, 260])
+        match_splitter.setStretchFactor(0, 1)
+        match_splitter.setStretchFactor(1, 1)
+        match_page_layout.addWidget(match_splitter, 1)
+        match_page_layout.addLayout(self._create_match_navigation())
+
+        output_page = QWidget()
+        output_page_layout = QVBoxLayout(output_page)
+        output_page_layout.setContentsMargins(0, 0, 0, 0)
+        output_page_layout.setSpacing(12)
+        output_page_layout.addWidget(self._create_match_summary_card())
+        output_page_layout.addWidget(export_card, 1)
+
+        self.step_stack = QStackedWidget()
+        self.step_stack.addWidget(match_page)
+        self.step_stack.addWidget(output_page)
+
+        main_layout.addWidget(step_header)
+        main_layout.addWidget(self.step_stack, 1)
 
         status_bar = QStatusBar()
         status_bar.showMessage("就绪")
         self.setStatusBar(status_bar)
+        self._show_match_step()
+        self._update_step_controls()
+
+    def _create_step_header(self) -> QWidget:
+        header = QFrame()
+        header.setObjectName("StepHeader")
+        layout = QHBoxLayout(header)
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setSpacing(10)
+
+        self.step_one_label = QLabel("1  配置匹配规则")
+        self.step_one_label.setObjectName("StepActive")
+        self.step_two_label = QLabel("2  选择输出内容")
+        self.step_two_label.setObjectName("StepInactive")
+
+        hint = QLabel("先完成匹配配置，再选择最终输出内容。切换步骤不会清空已填写内容。")
+        hint.setObjectName("StepHint")
+
+        layout.addWidget(self.step_one_label)
+        layout.addWidget(self.step_two_label)
+        layout.addStretch()
+        layout.addWidget(hint)
+        return header
+
+    def _create_match_navigation(self) -> QHBoxLayout:
+        layout = QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addStretch()
+
+        self.next_step_button = QPushButton("下一步")
+        self.next_step_button.setObjectName("PrimaryButton")
+        self.next_step_button.setProperty("role", "next-step")
+        self.next_step_button.clicked.connect(self._go_to_output_step)
+        layout.addWidget(self.next_step_button)
+        return layout
+
+    def _create_match_summary_card(self) -> QWidget:
+        card = self._create_card()
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setSpacing(4)
+
+        title = QLabel("当前匹配配置")
+        title.setObjectName("CardTitle")
+        self.match_summary_label = QLabel("尚未完成匹配配置。")
+        self.match_summary_label.setObjectName("CardSubtitle")
+
+        layout.addWidget(title)
+        layout.addWidget(self.match_summary_label)
+        return card
 
     def _create_file_panel(self, file_key: int, title_text: str, subtitle_text: str) -> dict[str, object]:
         card = self._create_card()
@@ -457,10 +521,16 @@ class ExcelCompareTool(QMainWindow):
         self.dedup_combo.setMaximumWidth(260)
         dedup_row.addWidget(self.dedup_combo)
 
+        self.previous_step_button = QPushButton("上一步")
+        self.previous_step_button.setObjectName("GhostButton")
+        self.previous_step_button.setProperty("role", "previous-step")
+        self.previous_step_button.clicked.connect(self._show_match_step)
+
+        footer_row.addWidget(self.previous_step_button)
         footer_row.addLayout(encoding_row, 0)
         footer_row.addLayout(dedup_row, 1)
         footer_row.addStretch()
-        self.export_button = QPushButton("导出结果")
+        self.export_button = QPushButton("开始匹配")
         self.export_button.setObjectName("PrimaryButton")
         self.export_button.setProperty("role", "export-result")
         self.export_button.clicked.connect(self._start_export)
@@ -529,6 +599,91 @@ class ExcelCompareTool(QMainWindow):
         card = QFrame()
         card.setObjectName(object_name)
         return card
+
+    def _show_match_step(self) -> None:
+        self.current_step = 0
+        self.step_stack.setCurrentIndex(0)
+        self._update_step_controls()
+        self.statusBar().showMessage("正在配置匹配规则")
+
+    def _go_to_output_step(self) -> None:
+        if not self._validate_match_step(show_message=True):
+            return
+        self.current_step = 1
+        self.step_stack.setCurrentIndex(1)
+        self._update_step_controls()
+        self.statusBar().showMessage("正在选择输出内容")
+
+    def _update_step_controls(self) -> None:
+        if hasattr(self, "next_step_button"):
+            self.next_step_button.setEnabled(True)
+        if hasattr(self, "step_one_label"):
+            self.step_one_label.setObjectName("StepActive" if self.current_step == 0 else "StepDone")
+            self.step_two_label.setObjectName("StepActive" if self.current_step == 1 else "StepInactive")
+            self.step_one_label.style().unpolish(self.step_one_label)
+            self.step_one_label.style().polish(self.step_one_label)
+            self.step_two_label.style().unpolish(self.step_two_label)
+            self.step_two_label.style().polish(self.step_two_label)
+        self._update_match_summary()
+
+    def _update_match_summary(self) -> None:
+        if not hasattr(self, "match_summary_label"):
+            return
+        left_state = self.file_states[1]
+        right_state = self.file_states[2]
+        valid_pairs = [
+            (row.current_left_label(), row.current_right_label())
+            for row in self.match_rows
+            if row.current_left_raw() and row.current_right_raw()
+        ]
+        if not left_state.path or not right_state.path:
+            self.match_summary_label.setText("尚未选择完整的两个文件。")
+            return
+        if not valid_pairs:
+            self.match_summary_label.setText("已选择两个文件，尚未设置匹配列。")
+            return
+
+        from os.path import basename
+
+        left_name = basename(left_state.path)
+        right_name = basename(right_state.path)
+        self.match_summary_label.setText(
+            f"{left_name} 与 {right_name}，已配置 {len(valid_pairs)} 组匹配列。"
+        )
+
+    def _validate_match_step(self, *, show_message: bool) -> bool:
+        left_state = self.file_states[1]
+        right_state = self.file_states[2]
+        if not left_state.path or not right_state.path:
+            if show_message:
+                QMessageBox.warning(self, "缺少文件", "请先选择两个文件。")
+            return False
+        if not left_state.columns or not right_state.columns:
+            if show_message:
+                QMessageBox.warning(self, "文件未加载完成", "请等待两个文件加载完成后再继续。")
+            return False
+
+        seen_left: set[str] = set()
+        seen_right: set[str] = set()
+        valid_pairs = 0
+        for row in self.match_rows:
+            left_raw = row.current_left_raw()
+            right_raw = row.current_right_raw()
+            if not left_raw or not right_raw:
+                continue
+            if left_raw in seen_left or right_raw in seen_right:
+                if show_message:
+                    QMessageBox.warning(self, "匹配列重复", "同一列不能在匹配规则中重复使用。")
+                return False
+            seen_left.add(left_raw)
+            seen_right.add(right_raw)
+            valid_pairs += 1
+
+        if valid_pairs == 0:
+            if show_message:
+                QMessageBox.warning(self, "缺少匹配规则", "请至少添加一组匹配列。")
+            return False
+        return True
 
     def _bind_system_theme_tracking(self) -> None:
         app = QApplication.instance()
@@ -608,7 +763,7 @@ class ExcelCompareTool(QMainWindow):
         QWidget#Root {{
             background: {tokens.background};
         }}
-        QFrame#Card, QFrame#SelectionPanel {{
+        QFrame#Card, QFrame#SelectionPanel, QFrame#StepHeader {{
             background: {tokens.surface};
             border: 1px solid {tokens.border};
             border-radius: 16px;
@@ -639,6 +794,29 @@ class ExcelCompareTool(QMainWindow):
             border-radius: 12px;
             background: {tokens.elevated};
             padding: 12px 10px;
+        }}
+        QLabel#StepActive, QLabel#StepDone, QLabel#StepInactive {{
+            border-radius: 12px;
+            padding: 7px 12px;
+            font-size: 12px;
+            font-weight: 700;
+        }}
+        QLabel#StepActive {{
+            background: {tokens.accent};
+            color: white;
+        }}
+        QLabel#StepDone {{
+            background: {tokens.accent_soft};
+            color: {tokens.text};
+        }}
+        QLabel#StepInactive {{
+            background: {tokens.elevated};
+            color: {tokens.muted};
+            border: 1px solid {tokens.border};
+        }}
+        QLabel#StepHint {{
+            color: {tokens.muted};
+            font-size: 11px;
         }}
         QLineEdit, QComboBox, QTableView, QScrollArea#SelectionScroll {{
             background: {tokens.elevated};
@@ -833,6 +1011,7 @@ class ExcelCompareTool(QMainWindow):
         widgets["preview_empty"].setVisible(True)
         widgets["preview_table"].setVisible(False)
         self.statusBar().showMessage(f"正在加载文件 {file_key} 预览")
+        self._update_step_controls()
         self._load_preview_async(file_key, file_path, None)
 
     def _reload_selected_sheet(self, file_key: int) -> None:
@@ -904,6 +1083,7 @@ class ExcelCompareTool(QMainWindow):
             self._refresh_match_row_options()
 
         self._refresh_output_checkboxes()
+        self._update_step_controls()
         self.statusBar().showMessage(f"文件 {file_key} 预览已更新")
 
     def _on_preview_failed(self, file_key: int, request_id: int, message: str) -> None:
@@ -915,6 +1095,7 @@ class ExcelCompareTool(QMainWindow):
         widgets["preview_empty"].setText(f"加载失败：{message}")
         widgets["preview_empty"].setVisible(True)
         widgets["preview_table"].setVisible(False)
+        self._update_step_controls()
         self.statusBar().showMessage(f"文件 {file_key} 加载失败")
 
     def _update_preview_table(self, file_key: int, preview: PreviewData) -> None:
@@ -938,12 +1119,13 @@ class ExcelCompareTool(QMainWindow):
     def _add_match_row(self) -> None:
         row = MatchRowWidget()
         row.removed.connect(self._remove_match_row)
-        row.changed.connect(self._refresh_output_checkboxes)
+        row.changed.connect(self._on_match_rules_changed)
         self.match_rows.append(row)
         self.match_rows_layout.addWidget(row)
         self._refresh_match_row_options()
         self._refresh_output_checkboxes()
         self._update_match_empty_state()
+        self._update_step_controls()
 
     def _remove_match_row(self, row: MatchRowWidget) -> None:
         if row not in self.match_rows:
@@ -953,6 +1135,11 @@ class ExcelCompareTool(QMainWindow):
         row.deleteLater()
         self._refresh_output_checkboxes()
         self._update_match_empty_state()
+        self._update_step_controls()
+
+    def _on_match_rules_changed(self) -> None:
+        self._refresh_output_checkboxes()
+        self._update_step_controls()
 
     def _update_match_empty_state(self) -> None:
         is_empty = not self.match_rows
@@ -1171,6 +1358,7 @@ class ExcelCompareTool(QMainWindow):
             item = layout.takeAt(0)
             widget = item.widget()
             if widget is not None:
+                widget.setParent(None)
                 widget.deleteLater()
 
 

@@ -105,6 +105,8 @@ def main() -> int:
 
             choose_left = find_button_by_role(window, "select-file-1")
             choose_right = find_button_by_role(window, "select-file-2")
+            next_button = find_button_by_role(window, "next-step")
+            previous_button = find_button_by_role(window, "previous-step")
             export_button = find_button_by_role(window, "export-result")
 
             QTest.mouseClick(choose_left, Qt.MouseButton.LeftButton)
@@ -126,6 +128,11 @@ def main() -> int:
             row.right_combo.setCurrentIndex(right_index)
             app.processEvents()
 
+            QTest.mouseClick(next_button, Qt.MouseButton.LeftButton)
+            app.processEvents()
+            if window.current_step != 1:
+                raise AssertionError("点击下一步后未进入输出设置")
+
             left_checkbox = next(
                 checkbox for checkbox in window.output_checkboxes["left"] if checkbox.property("raw_name") == "name"
             )
@@ -135,6 +142,18 @@ def main() -> int:
             left_checkbox.setChecked(True)
             right_checkbox.setChecked(True)
             app.processEvents()
+
+            QTest.mouseClick(previous_button, Qt.MouseButton.LeftButton)
+            app.processEvents()
+            if window.current_step != 0:
+                raise AssertionError("点击上一步后未回到匹配设置")
+            if row.left_combo.currentData() != "id" or row.right_combo.currentData() != "user_id":
+                raise AssertionError("返回匹配设置后匹配列状态丢失")
+
+            QTest.mouseClick(next_button, Qt.MouseButton.LeftButton)
+            app.processEvents()
+            if not left_checkbox.isChecked() or not right_checkbox.isChecked():
+                raise AssertionError("再次进入输出设置后输出列状态丢失")
 
             window.output_name_edit.setText("gui_smoke_result")
             QTest.mouseClick(export_button, Qt.MouseButton.LeftButton)

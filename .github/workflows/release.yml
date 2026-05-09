@@ -1,0 +1,96 @@
+name: Build desktop apps
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            os: macos-latest
+            artifact_name: Excel-data-match-tool-macOS
+            archive_name: Excel-data-match-tool-macOS.zip
+          - name: Windows
+            os: windows-latest
+            artifact_name: Excel-data-match-tool-Windows
+            archive_name: Excel-data-match-tool-Windows.zip
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv pip install --system -r requirements.txt
+
+      - name: Run tests
+        run: |
+          python -m unittest tests/test_excel_core.py
+          python -m unittest tests/test_gui_regression.py
+
+      - name: Build app
+        run: >
+          pyinstaller
+          --windowed
+          --clean
+          --noconfirm
+          --name "Excel数据匹配工具"
+          --hidden-import PyQt6.QtCore
+          --hidden-import PyQt6.QtWidgets
+          --hidden-import PyQt6.QtGui
+          --hidden-import pandas._libs.tslibs.timedeltas
+          --hidden-import pandas._libs.tslibs.np_datetime
+          --hidden-import pandas._libs.tslibs.nattype
+          --hidden-import pandas._libs.properties
+          --hidden-import numpy.core._methods
+          --hidden-import numpy.lib.format
+          --hidden-import xlrd.xldate
+          --hidden-import openpyxl.cell
+          --hidden-import openpyxl.workbook
+          --hidden-import chardet
+          --exclude-module matplotlib
+          --exclude-module tkinter
+          --exclude-module test
+          --exclude-module unittest
+          --exclude-module pydoc
+          --exclude-module doctest
+          start_excel_tool.py
+
+      - name: Package macOS app
+        if: runner.os == 'macOS'
+        run: ditto -c -k --sequesterRsrc --keepParent "dist/Excel数据匹配工具.app" "${{ matrix.archive_name }}"
+
+      - name: Package Windows app
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path "dist/Excel数据匹配工具" -DestinationPath "${{ matrix.archive_name }}" -Force
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.archive_name }}
+
+      - name: Publish release asset
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.archive_name }}

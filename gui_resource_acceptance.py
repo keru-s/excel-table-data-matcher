@@ -104,6 +104,11 @@ def main() -> int:
         row.right_combo.setCurrentIndex(row.right_combo.findData("分类名称"))
         app.processEvents()
 
+        QTest.mouseClick(find_button(window, "next-step"), Qt.MouseButton.LeftButton)
+        app.processEvents()
+        if window.current_step != 1:
+            raise AssertionError("未进入输出设置")
+
         left_city = next(
             checkbox for checkbox in window.output_checkboxes["left"] if checkbox.property("raw_name") == "城市"
         )
@@ -120,6 +125,16 @@ def main() -> int:
         window.output_name_edit.setText("资源验收GUI测试")
         app.processEvents()
         QTest.qWait(500)
+
+        QTest.mouseClick(find_button(window, "previous-step"), Qt.MouseButton.LeftButton)
+        app.processEvents()
+        if row.left_combo.currentData() != "集团诊断名称" or row.right_combo.currentData() != "分类名称":
+            raise AssertionError("步骤切换后匹配列状态丢失")
+
+        QTest.mouseClick(find_button(window, "next-step"), Qt.MouseButton.LeftButton)
+        app.processEvents()
+        if not left_city.isChecked() or not right_status.isChecked() or not right_category_id.isChecked():
+            raise AssertionError("步骤切换后输出列状态丢失")
 
         QTest.mouseClick(find_button(window, "export-result"), Qt.MouseButton.LeftButton)
 
