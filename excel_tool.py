@@ -3,9 +3,10 @@ from __future__ import annotations
 import sys
 import threading
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from PyQt6.QtCore import QEvent, Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QPalette, QStandardItem, QStandardItemModel
+from PyQt6.QtGui import QColor, QFont, QIcon, QPalette, QStandardItem, QStandardItemModel
 from PyQt6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -51,6 +52,7 @@ from excel_core import (
 )
 
 COMMON_UI_FONT_FAMILY = "Arial"
+APP_ICON_PATH = Path(__file__).resolve().parent / "assets" / "app_icon.png"
 
 
 @dataclass(frozen=True)
@@ -218,6 +220,8 @@ class ExcelCompareTool(QMainWindow):
 
     def _build_ui(self) -> None:
         self.setWindowTitle("Excel 数据匹配工具")
+        if APP_ICON_PATH.exists():
+            self.setWindowIcon(QIcon(str(APP_ICON_PATH)))
         self.resize(1280, 820)
         self.setMinimumSize(1040, 700)
 

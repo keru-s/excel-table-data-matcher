@@ -23,7 +23,7 @@ PYINSTALLER_CONFIG = {
     'windowed': True,  # 不显示控制台窗口
 
     # 图标文件（如果有的话）
-    'icon': None,  # 可以添加 .ico 文件路径
+    'icon': 'assets/app_icon.ico',
 
     # 需要包含的数据文件和目录
     'add_data': [

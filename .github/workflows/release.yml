@@ -24,10 +24,12 @@ jobs:
             os: macos-latest
             artifact_name: Excel-data-match-tool-macOS
             archive_name: Excel-data-match-tool-macOS.zip
+            icon_path: assets/app_icon.icns
           - name: Windows
             os: windows-latest
             artifact_name: Excel-data-match-tool-Windows
             archive_name: Excel-data-match-tool-Windows.zip
+            icon_path: assets/app_icon.ico
 
     steps:
       - name: Check out repository
@@ -56,6 +58,7 @@ jobs:
           --clean
           --noconfirm
           --name "Excel数据匹配工具"
+          --icon "${{ matrix.icon_path }}"
           --hidden-import PyQt6.QtCore
           --hidden-import PyQt6.QtWidgets
           --hidden-import PyQt6.QtGui
